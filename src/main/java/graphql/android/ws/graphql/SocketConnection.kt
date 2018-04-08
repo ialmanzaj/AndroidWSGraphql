@@ -18,8 +18,8 @@ import java.util.logging.Logger
 class SocketConnection(private val context: Context, private val view: SocketView,  URL: String) : ClientWebSocket.SocketListenerCallback {
 
     companion object {
-        val Log: Logger = Logger.getLogger(SocketConnection::class.java.name)
-        const val HEART_BEAT = 60000L
+        private val Log: Logger = Logger.getLogger(SocketConnection::class.java.name)
+        private const val HEART_BEAT = 60000L
     }
 
     private var clientWebSocket: ClientWebSocket? = null
@@ -27,8 +27,11 @@ class SocketConnection(private val context: Context, private val view: SocketVie
 
     init {
         socketConnectionHandler = Handler()
+
         try {
             clientWebSocket = ClientWebSocket(this, URL)
+            openConnection()
+
         } catch (e: Exception) {
             Log.info( "Socket exception $e")
         }
@@ -81,7 +84,7 @@ class SocketConnection(private val context: Context, private val view: SocketVie
         socketConnectionHandler?.removeCallbacks(checkConnectionRunnable)
     }
 
-    fun openGraphqlConnection(){
+    private fun openGraphqlConnection(){
         this.sendMessage(MessageServer(null, GQL_CONNECTION_INIT, null))
     }
 
@@ -89,6 +92,7 @@ class SocketConnection(private val context: Context, private val view: SocketVie
         if (clientWebSocket != null) clientWebSocket!!.close()
 
         clientWebSocket?.connect()
+        openGraphqlConnection()
 
         initNetworkListener()
         startCheckConnection()
@@ -97,12 +101,17 @@ class SocketConnection(private val context: Context, private val view: SocketVie
 
     fun closeConnection() {
         if(clientWebSocket != null) {
+            closeGraphqlConnection()
             clientWebSocket?.close()
             clientWebSocket = null
         }
 
         releaseNetworkStateListener()
         stopCheckConnection()
+    }
+
+    fun closeGraphqlConnection(){
+        this.sendMessage(MessageServer(null, GQL_CONNECTION_TERMINATE, null ))
     }
 
     fun sendMessage(message: MessageServer) {
@@ -114,7 +123,21 @@ class SocketConnection(private val context: Context, private val view: SocketVie
     }
 
     override fun onSocketMessage(message: String) {
-        view.onReceivedMessage(Gson().fromJson<MessageClient>(message, MessageClient::class.java))
+        val response = Gson().fromJson<MessageClient>(message, MessageClient::class.java)
+        when (response.type) {
+            GQL_CONNECTION_ACK -> {
+                Log.info("graphql is connected")
+            }
+            GQL_CONNECTION_ERROR -> {
+                Log.warning("error ${response.payload?.data.toString()}")
+                view.onReceivedMessage(Response.Error(response.payload?.data.toString()))
+            }
+            GQL_DATA -> {
+                Log.info("data successful ${response.payload!!.data}")
+                view.onReceivedMessage(Response.Data(response.payload!!.data))
+            }
+        }
+
     }
 
     override fun onDisconnected() {
@@ -124,7 +147,6 @@ class SocketConnection(private val context: Context, private val view: SocketVie
     override fun onError(error: Exception) {
         view.onSocketError(error)
     }
-
 
     private fun initNetworkListener(){
         context.registerReceiver(mNetworkReceiver,  IntentFilter(ACTION_NETWORK_STATE_CHANGED))
@@ -158,9 +180,14 @@ class SocketConnection(private val context: Context, private val view: SocketVie
 
     interface SocketView {
         fun onConnected()
-        fun onReceivedMessage(response: MessageClient)
+        fun onReceivedMessage(response: Response)
         fun onDisconnected()
         fun onSocketError(error: Exception)
+    }
+
+    sealed class Response {
+        data class Error(val message: String) : Response()
+        data class Data(val data: Any) : Response()
     }
 
 }
