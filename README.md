@@ -45,11 +45,11 @@ dependencies {
 Description
 -----------
 
-#### Create WebSocketFactory
+#### Create Socket Connection
 
 
 ```kotlin
-// Create a socket-connection instance.
+
    val socketConnection = SocketConnection(this, this, "ws://localhost:7003/feedback")
    socketConnection.openConnection()
 ```
