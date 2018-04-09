@@ -41,3 +41,39 @@ dependencies {
      implementation 'com.github.ialmanzaj:AndroidWSGraphql:-SNAPSHOT'
 }
 ```
+
+Description
+-----------
+
+#### Create WebSocketFactory
+
+
+```kotlin
+// Create a socket-connection instance.
+   val socketConnection = SocketConnection(this, this, "ws://localhost:7003/feedback")
+   socketConnection.openConnection()
+```
+
+### Subscribe / Unsubscribe
+
+Just call subscribe method, set an tag and your subscription query as well.
+
+```   
+   socketConnection.subscribe(Subscription("subscription {feedbackAdded {id, text}}", "feed"))
+```
+
+### Received Message
+
+Below implement the method:
+```
+override fun onReceivedMessage(response: SocketConnection.Response) {
+      when (response){
+          is SocketConnection.Response.Data -> {
+              Log.info("data ${response.data}")
+          }
+          is SocketConnection.Response.Error -> {
+              Log.warning("error ${response.message}")
+          }
+      }
+    }
+```
