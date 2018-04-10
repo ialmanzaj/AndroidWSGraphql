@@ -24,7 +24,7 @@ class SocketConnection(private val context: Context,
     private var clientWebSocket: ClientWebSocket? = null
     private var socketConnectionHandler: Handler? = null
 
-    private var dic : Array<String>? = null
+    private var dic :HashMap<Int, String> = HashMap();
 
     init {
         socketConnectionHandler = Handler()
@@ -119,7 +119,9 @@ class SocketConnection(private val context: Context,
         if (isConnected()){
            sendRaw(response)
         }else{
-            dic?.set(0, response)
+            openConnection()
+
+            dic[0] = response
         }
     }
 
@@ -138,8 +140,9 @@ class SocketConnection(private val context: Context,
             GQL_CONNECTION_ACK -> {
                 Log.info("Graphql is connected")
                 view.onConnected()
-                if (dic == null){
-                    dic?.get(0)?.let { sendRaw(it) }
+                if (!dic.isEmpty()){
+                    dic[0]?.let { sendRaw(it) }
+                    dic.remove(0)
                 }
             }
             GQL_CONNECTION_KEEP_ALIVE -> {
