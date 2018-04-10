@@ -9,7 +9,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import graphql.android.ws.graphql.NetworkStateReceiver.Companion.ACTION_NETWORK_STATE_CHANGED
 import graphql.android.ws.graphql.model.MessageClient
-import graphql.android.ws.graphql.model.MessageServer
+import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
 import java.util.logging.Logger
@@ -24,7 +24,7 @@ class SocketConnection(private val context: Context,
     private var clientWebSocket: ClientWebSocket? = null
     private var socketConnectionHandler: Handler? = null
 
-    private var dic :HashMap<Int, String> = HashMap();
+    private var queue : MutableList<String> = mutableListOf()
 
     init {
         socketConnectionHandler = Handler()
@@ -44,12 +44,11 @@ class SocketConnection(private val context: Context,
 
     fun subscribe(query: String, tag: String, variables: String?, operationName: String?): Subscription {
         val parser = JsonParser()
-        val message = MessageServer("1",
-                GQL_START,
-                Payload(variables = parser.parse(variables ?: "{}").asJsonObject,
-                        extensions = parser.parse(variables ?: "{}").asJsonObject,
-                        operationName = operationName,
-                        query = query
+        val message = OperationMessage("1",
+                 GQL_START,
+                Payload(query = query,
+                        variables = parser.parse(variables ?: "{}").asJsonObject,
+                        operationName = operationName
                 )
         )
         this.sendMessage(message)
@@ -61,7 +60,7 @@ class SocketConnection(private val context: Context,
     }
 
     fun unsubscribe(tag: String) {
-        val message = MessageServer(tag, GQL_STOP, null)
+        val message = OperationMessage(tag, GQL_STOP,  null)
         this.sendMessage(message)
     }
 
@@ -88,17 +87,16 @@ class SocketConnection(private val context: Context,
     }
 
     private fun openGraphqlConnection(){
-        this.sendMessage(MessageServer(null, GQL_CONNECTION_INIT, null))
+        this.sendMessage(OperationMessage(null, GQL_CONNECTION_INIT, null))
     }
 
     fun openConnection() {
         if (clientWebSocket != null) clientWebSocket!!.close()
 
+        Log.info( "Socket is opening a connection ")
         clientWebSocket?.connect()
-
         initNetworkListener()
         startCheckConnection()
-        Log.info( "Socket is opening a connection ")
     }
 
     fun closeConnection() {
@@ -113,21 +111,16 @@ class SocketConnection(private val context: Context,
     }
 
     fun closeGraphqlConnection(){
-        this.sendMessage(MessageServer(null, GQL_CONNECTION_TERMINATE, null ))
+        this.sendMessage(OperationMessage(null, GQL_CONNECTION_TERMINATE, null ))
     }
 
-    fun sendMessage(message: MessageServer) {
+    fun sendMessage(message: OperationMessage) {
         val response = Gson().toJson(message)
         if (isConnected()){
            sendRaw(response)
         }else{
             openConnection()
-
-            if (dic.isNotEmpty()){
-                dic[1] = response
-            }else {
-                dic[0] = response
-            }
+            queue.add(response)
         }
     }
 
@@ -143,29 +136,34 @@ class SocketConnection(private val context: Context,
 
     override fun onSocketMessage(message: String) {
         val response: MessageClient = Gson().fromJson(message, MessageClient::class.java)
+
+
         when (response.type) {
             GQL_CONNECTION_ACK -> {
                 Log.info("Graphql is connected")
                 view.onConnected()
-                if (!dic.isEmpty()){
-                    dic[0]?.let { sendRaw(it) }
-                    dic.remove(0)
+                if (queue.isNotEmpty()){
+                    Log.info("sending...message")
+                    queue.map { sendRaw(it) }
+                    queue = mutableListOf()
                 }
             }
             GQL_CONNECTION_KEEP_ALIVE -> {
                 Log.info("Ping by server.")
             }
             GQL_ERROR -> {
-                Log.warning("error ${response.payload?.data.toString()}")
-                view.onReceivedMessage(Response.Error(response.payload?.data.toString()))
+                val error = response.payload?.toString()
+                Log.warning("error $error")
+                view.onReceivedMessage(Response.Error(message))
             }
             GQL_CONNECTION_ERROR -> {
-                Log.warning("error ${response.payload?.data.toString()}")
-                view.onReceivedMessage(Response.Error(response.payload?.data.toString()))
+                val error = response.payload?.toString()
+                Log.warning("error $error")
+                view.onReceivedMessage(Response.Error(message))
             }
             GQL_DATA -> {
-                Log.info("data successful ${response.payload!!.data}")
-                view.onReceivedMessage(Response.Data(response.payload!!.data))
+                Log.info("data successful ${response.payload}")
+                view.onReceivedMessage(Response.Data(response.payload!!))
             }
             GQL_COMPLETE -> {
                 Log.info("Operation complete.")
