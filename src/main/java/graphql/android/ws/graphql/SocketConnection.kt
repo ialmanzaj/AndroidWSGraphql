@@ -136,7 +136,7 @@ class SocketConnection(private val context: Context,
 
     override fun onSocketMessage(message: String) {
         val response: OperationMessageServer = Gson().fromJson(message, OperationMessageServer::class.java)
-
+        Log.info("response $response")
 
         when (response.type) {
             GQL_CONNECTION_ACK -> {

@@ -18,8 +18,7 @@ data class Payload(
         var operationName: String?
 )
 
-data class PayloadServer(var data: String)
-
+data class PayloadServer(var data: Any)
 
 data class OperationMessageServer(
         var id: String?,
