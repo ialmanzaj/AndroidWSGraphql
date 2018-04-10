@@ -8,8 +8,8 @@ import android.os.Handler
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import graphql.android.ws.graphql.NetworkStateReceiver.Companion.ACTION_NETWORK_STATE_CHANGED
-import graphql.android.ws.graphql.model.MessageClient
 import graphql.android.ws.graphql.model.OperationMessage
+import graphql.android.ws.graphql.model.OperationMessageServer
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
 import java.util.logging.Logger
@@ -135,7 +135,7 @@ class SocketConnection(private val context: Context,
     }
 
     override fun onSocketMessage(message: String) {
-        val response: MessageClient = Gson().fromJson(message, MessageClient::class.java)
+        val response: OperationMessageServer = Gson().fromJson(message, OperationMessageServer::class.java)
 
 
         when (response.type) {
@@ -162,8 +162,8 @@ class SocketConnection(private val context: Context,
                 view.onReceivedMessage(Response.Error(message))
             }
             GQL_DATA -> {
-                Log.info("data successful ${response.payload}")
-                view.onReceivedMessage(Response.Data(response.payload!!))
+                Log.info("data successful ${response.payload?.data}")
+                view.onReceivedMessage(Response.Data(response.payload!!.data))
             }
             GQL_COMPLETE -> {
                 Log.info("Operation complete.")

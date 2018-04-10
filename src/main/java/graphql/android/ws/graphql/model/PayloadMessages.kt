@@ -18,16 +18,11 @@ data class Payload(
         var operationName: String?
 )
 
-data class MessageClient(
-        var id: String?,
-        var type: String?,
-        var payload: Payload?
-)
+data class PayloadServer(var data: String)
 
-data class PayloadServer(var message: String)
 
 data class OperationMessageServer(
-        var payload: PayloadServer,
         var id: String?,
-        var type: String?
+        var type: String?,
+        var payload: PayloadServer?
 )
