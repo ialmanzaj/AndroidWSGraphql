@@ -46,9 +46,11 @@ class SocketConnection(private val context: Context,
         val parser = JsonParser()
         val message = MessageServer("1",
                 GQL_START,
-                Payload(variables = variables,
+                Payload(variables = parser.parse(variables ?: "{}").asJsonObject,
+                        extensions = parser.parse(variables ?: "{}").asJsonObject,
                         operationName = operationName,
-                        query = query)
+                        query = query
+                )
         )
         this.sendMessage(message)
         return Subscription(query, tag)
@@ -121,11 +123,16 @@ class SocketConnection(private val context: Context,
         }else{
             openConnection()
 
-            dic[0] = response
+            if (dic.isNotEmpty()){
+                dic[1] = response
+            }else {
+                dic[0] = response
+            }
         }
     }
 
     private fun sendRaw(response: String){
+        Log.info("sending raw message $response")
         clientWebSocket?.sendMessage(response)
     }
 
