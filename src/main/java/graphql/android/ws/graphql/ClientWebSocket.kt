@@ -94,7 +94,7 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
     }
 
     fun sendPing(){
-        ws?.pingInterval = 60 * 1000;
+        ws?.pingInterval = 60 * 1000
     }
 
     fun sendMessage(message: String) {
@@ -103,15 +103,15 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
     }
 
     fun close() {
-        Log.d(TAG,"disconnecting socket")
         ws?.disconnect()
+        Log.d(TAG,"disconnecting socket")
     }
 
     inner class SocketAdapter : WebSocketAdapter() {
         @Throws(Exception::class)
         override fun onConnected(websocket: WebSocket, headers: Map<String, List<String>>) {
             super.onConnected(websocket, headers)
-            Log.i(TAG, "onConnected $websocket headers:${headers.map { it.value }}")
+            Log.i(TAG, "onConnected $websocket headers: ${headers.map { it.value }}")
             listener.onConnected()
         }
         @Throws(Exception::class)
@@ -140,11 +140,7 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
         @Throws(Exception::class)
         override fun onPongFrame(websocket: WebSocket, frame: WebSocketFrame) {
             super.onPongFrame(websocket, frame)
-            Log.i(TAG, "onPongFrame  isDataFrame: ${frame.isDataFrame}, " +
-                    "isTextFrame:${frame.isTextFrame}, " +
-                    "hasPayload: ${frame.hasPayload()}, " +
-                    "isBinaryFrame: ${frame.isBinaryFrame}, " +
-                    "payload: ${String(frame.payload, Charset.forName("UTF-8"))} ")
+            Log.i(TAG, "onPongFrame payload: ${String(frame.payload, Charset.forName("UTF-8"))} ")
         }
         @Throws(Exception::class)
         override fun onTextMessageError(websocket: WebSocket, cause: WebSocketException, data: ByteArray) {
