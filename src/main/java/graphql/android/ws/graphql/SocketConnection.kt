@@ -5,14 +5,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
-import com.google.gson.Gson
-import com.google.gson.JsonParser
+import com.fasterxml.jackson.databind.ObjectMapper
 import graphql.android.ws.graphql.NetworkStateReceiver.Companion.ACTION_NETWORK_STATE_CHANGED
 import graphql.android.ws.graphql.model.OperationMessage
-import graphql.android.ws.graphql.model.OperationMessageServer
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
+import org.json.JSONObject
 import java.util.logging.Logger
+
+
+
+
 
 class SocketConnection(private val context: Context,
                        private val view: SocketConnectionListener,  URL: String) : ClientWebSocket.SocketListenerCallback {
@@ -43,11 +46,10 @@ class SocketConnection(private val context: Context,
     }
 
     fun subscribe(query: String, tag: String, variables: String?, operationName: String?): Subscription {
-        val parser = JsonParser()
         val message = OperationMessage("1",
                  GQL_START,
                 Payload(query = query,
-                        variables = parser.parse(variables ?: "{}").asJsonObject,
+                        variables = variables,
                         operationName = operationName
                 )
         )
@@ -115,7 +117,7 @@ class SocketConnection(private val context: Context,
     }
 
     fun sendMessage(message: OperationMessage) {
-        val response = Gson().toJson(message)
+        val response = ObjectMapper().writeValueAsString(message)
         if (isConnected()){
            sendRaw(response)
         }else{
@@ -135,10 +137,8 @@ class SocketConnection(private val context: Context,
     }
 
     override fun onSocketMessage(message: String) {
-        val response: OperationMessageServer = Gson().fromJson(message, OperationMessageServer::class.java)
-        Log.info("response $response")
-
-        when (response.type) {
+        val response = JSONObject(message)
+        when (response.get("type")) {
             GQL_CONNECTION_ACK -> {
                 Log.info("Graphql is connected")
                 view.onConnected()
@@ -152,18 +152,13 @@ class SocketConnection(private val context: Context,
                 Log.info("Ping by server.")
             }
             GQL_ERROR -> {
-                val error = response.payload?.toString()
-                Log.warning("error $error")
-                view.onReceivedMessage(Response.Error(message))
+                view.onReceivedMessage(Response.Error(response.get("payload").toString()))
             }
             GQL_CONNECTION_ERROR -> {
-                val error = response.payload?.toString()
-                Log.warning("error $error")
-                view.onReceivedMessage(Response.Error(message))
+                view.onReceivedMessage(Response.Error(response.get("payload").toString()))
             }
             GQL_DATA -> {
-                Log.info("data successful ${response.payload?.data}")
-                view.onReceivedMessage(Response.Data(response.payload!!.data))
+                view.onReceivedMessage(Response.Data(response.get("payload").toString()))
             }
             GQL_COMPLETE -> {
                 Log.info("Operation complete.")
@@ -221,7 +216,7 @@ class SocketConnection(private val context: Context,
 
     sealed class Response {
         data class Error(val message: String) : Response()
-        data class Data(val data: Any) : Response()
+        data class Data(val data: String) : Response()
     }
 
 }
