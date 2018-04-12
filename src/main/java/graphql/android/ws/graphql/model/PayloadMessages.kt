@@ -1,5 +1,7 @@
 package graphql.android.ws.graphql.model
 
+import org.json.JSONObject
+
 
 enum class SocketOperation {
     CONNECT, DISCONNECT
@@ -13,7 +15,7 @@ data class OperationMessage(
 
 data class Payload(
         var query: String?,
-        var variables: String?,
+        var variables: JSONObject?,
         var operationName: String?
 )
 

@@ -45,7 +45,7 @@ class SocketConnection(private val context: Context,
         val message = OperationMessage("1",
                  GQL_START,
                 Payload(query = query,
-                        variables = variables,
+                        variables = JSONObject(variables),
                         operationName = operationName
                 )
         )
