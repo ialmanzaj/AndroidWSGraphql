@@ -5,7 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.gson.Gson
+import com.google.gson.JsonParser
 import graphql.android.ws.graphql.NetworkStateReceiver.Companion.ACTION_NETWORK_STATE_CHANGED
 import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
@@ -42,10 +43,11 @@ class SocketConnection(private val context: Context,
     }
 
     fun subscribe(query: String, tag: String, variables: String?, operationName: String?): Subscription {
+        val parser = JsonParser()
         val message = OperationMessage("1",
                  GQL_START,
                 Payload(query = query,
-                        variables = JSONObject(variables),
+                        variables = parser.parse(variables ?: "{}").asJsonObject,
                         operationName = operationName
                 )
         )
@@ -113,7 +115,7 @@ class SocketConnection(private val context: Context,
     }
 
     fun sendMessage(message: OperationMessage) {
-        val response = ObjectMapper().writeValueAsString(message)
+        val response = Gson().toJson(message)
         if (isConnected()){
            sendRaw(response)
         }else{
