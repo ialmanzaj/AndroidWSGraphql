@@ -38,13 +38,13 @@ class SocketConnection(private val context: Context,
         }
     }
 
-    fun subscribe(subscription: Subscription) {
-        this.subscribe(subscription.query, subscription.tag, subscription.variables, subscription.operationName)
+    fun subscribe(subscription: Subscription) :  Subscription {
+        return this.subscribe(subscription.query, subscription.tag, subscription.variables, subscription.operationName)
     }
 
     fun subscribe(query: String, tag: String, variables: String?, operationName: String?): Subscription {
         val parser = JsonParser()
-        val message = OperationMessage("1",
+        val message = OperationMessage(tag,
                  GQL_START,
                 Payload(query = query,
                         variables = parser.parse(variables ?: "{}").asJsonObject,
