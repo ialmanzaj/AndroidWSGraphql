@@ -13,10 +13,6 @@ import graphql.android.ws.graphql.model.Subscription
 import org.json.JSONObject
 import java.util.logging.Logger
 
-
-
-
-
 class SocketConnection(private val context: Context,
                        private val view: SocketConnectionListener,  URL: String) : ClientWebSocket.SocketListenerCallback {
     companion object {
@@ -158,7 +154,8 @@ class SocketConnection(private val context: Context,
                 view.onReceivedMessage(Response.Error(response.get("payload").toString()))
             }
             GQL_DATA -> {
-                view.onReceivedMessage(Response.Data(response.get("payload").toString()))
+                val data = response.getJSONObject("payload").get("data").toString()
+                view.onReceivedMessage(Response.Data(data))
             }
             GQL_COMPLETE -> {
                 Log.info("Operation complete.")
