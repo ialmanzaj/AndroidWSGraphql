@@ -23,7 +23,7 @@ class ExampleUnitTest : AndroidTestCase(){
         val context = context
         Assert.assertNotNull(context)
 
-        val socketConnection  = SocketConnection(context,  object : SocketConnection.SocketConnectionListener {
+        val socketConnection  = SocketConnection(object : SocketConnection.SocketConnectionListener {
             override fun onConnected() {
 
             }

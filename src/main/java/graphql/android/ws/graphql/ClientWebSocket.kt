@@ -11,9 +11,11 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
     companion object {
         val TAG: String = ClientWebSocket::class.java.canonicalName
         const val TIMEOUT: Int = 5000
+        const val MAX_RECONNECT = 5
     }
 
     private var ws: WebSocket? = null
+
 
     fun connect() {
         Thread {
@@ -29,8 +31,6 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
                     ws?.addProtocol(GRAPHQL_WS)
                     ws?.addListener(SocketAdapter())
                     ws?.connect()
-
-                    sendPing()
 
                     Log.d(TAG,"creating web-socket $ws")
 
@@ -93,10 +93,6 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
         return ws
     }
 
-    fun sendPing(){
-        ws?.pingInterval = 60 * 1000
-    }
-
     fun sendMessage(message: String) {
         Log.i(TAG, "sending message: $message")
         ws?.sendText(message)
@@ -111,30 +107,30 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
         @Throws(Exception::class)
         override fun onConnected(websocket: WebSocket, headers: Map<String, List<String>>) {
             super.onConnected(websocket, headers)
-            Log.i(TAG, "onConnected $websocket headers: ${headers.map { it.value }}")
+            Log.i(TAG, "onConnected $websocket headers:${ headers.map {it.value}}")
             listener.onConnected()
         }
         @Throws(Exception::class)
         override fun onStateChanged(websocket: WebSocket, newState: WebSocketState) {
             super.onStateChanged(websocket, newState)
-            Log.i(TAG, "onStateChanged --> $newState")
+            Log.i(TAG, "onStateChanged ---> $newState")
         }
         override fun onPingFrame(websocket: WebSocket?, frame: WebSocketFrame?) {
             super.onPingFrame(websocket, frame)
-            Log.i(TAG, "onPingFrame --> $websocket " +
+            Log.i(TAG, "onPingFrame ---> $websocket " +
                     "payload: ${frame?.payload?.let { String(it, Charset.forName("UTF-8")) }}")
         }
         override fun onCloseFrame(websocket: WebSocket?, frame: WebSocketFrame?) {
             super.onCloseFrame(websocket, frame)
-            Log.i(TAG, "onCloseFrame --> ${frame?.payload?.let { String(it, Charset.forName("UTF-8")) }}")
+            Log.i(TAG, "onCloseFrame ---> ${frame?.payload?.let { String(it, Charset.forName("UTF-8")) }}")
         }
         override fun onSendError(websocket: WebSocket?, cause: WebSocketException?, frame: WebSocketFrame?) {
             super.onSendError(websocket, cause, frame)
-            Log.e(TAG, "onSendError --> ${cause?.error}," +
+            Log.e(TAG, "onSendError ---> ${cause?.error}," +
                     "payload: ${frame?.payload?.let { String(it, Charset.forName("UTF-8")) }}")
         }
         override fun onTextMessage(websocket: WebSocket, message: String) {
-            Log.i(TAG, "Message --> $message")
+            Log.i(TAG, "Message ---> $message")
             listener.onSocketMessage(message)
         }
         @Throws(Exception::class)
@@ -195,7 +191,6 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
             super.onSendingHandshake(websocket, requestLine, headers)
             Log.i(TAG, "onSendingHandshake requestLine $requestLine ${headers?.map{it}}")
         }
-
         override fun onFrameUnsent(websocket: WebSocket?, frame: WebSocketFrame?) {
             super.onFrameUnsent(websocket, frame)
             Log.i(TAG, "onFrameUnsent frame ${frame?.payload?.let { String(it, Charset.forName("UTF-8")) }}")
@@ -218,7 +213,6 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
             listener.onError(cause)
         }
     }
-
     interface SocketListenerCallback {
         fun onConnected()
         fun onSocketMessage(message: String)

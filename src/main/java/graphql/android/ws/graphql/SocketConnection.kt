@@ -1,21 +1,17 @@
 package graphql.android.ws.graphql
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.os.Handler
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import graphql.android.ws.graphql.NetworkStateReceiver.Companion.ACTION_NETWORK_STATE_CHANGED
 import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
 import org.json.JSONObject
 import java.util.logging.Logger
 
-class SocketConnection(private val context: Context,
-                       private val view: SocketConnectionListener,  URL: String) : ClientWebSocket.SocketListenerCallback {
+class SocketConnection (private val view: SocketConnectionListener,
+                                           URL: String) : ClientWebSocket.SocketListenerCallback {
+
     companion object {
         private val Log: Logger = Logger.getLogger(SocketConnection::class.java.name)
         private const val HEART_BEAT = 60000L
@@ -38,29 +34,21 @@ class SocketConnection(private val context: Context,
         }
     }
 
-    fun subscribe(subscription: Subscription) :  Subscription {
-        return this.subscribe(subscription.query, subscription.tag, subscription.variables, subscription.operationName)
-    }
-
-    fun subscribe(query: String, tag: String, variables: String?, operationName: String?): Subscription {
+    fun subscribe(subscription: Subscription) {
         val parser = JsonParser()
-        val message = OperationMessage(tag,
-                 GQL_START,
-                Payload(query = query,
-                        variables = parser.parse(variables ?: "{}").asJsonObject,
-                        operationName = operationName
-                )
+        val message = OperationMessage(
+                id = subscription.tag,
+                payload = Payload(query = subscription.query,
+                        variables = parser.parse(subscription.variables ?: "{}").asJsonObject,
+                        operationName = subscription.operationName
+                ),
+                type = GQL_START
         )
         this.sendMessage(message)
-        return Subscription(query, tag)
-    }
-
-    fun unsubscribe(subscription: Subscription) {
-        this.unsubscribe(subscription.tag)
     }
 
     fun unsubscribe(tag: String) {
-        val message = OperationMessage(tag, GQL_STOP,  null)
+        val message = OperationMessage(id = tag, type = GQL_STOP,  payload = null)
         this.sendMessage(message)
     }
 
@@ -95,7 +83,7 @@ class SocketConnection(private val context: Context,
 
         Log.info( "Socket is opening a connection ")
         clientWebSocket?.connect()
-        initNetworkListener()
+        //initNetworkListener()
         startCheckConnection()
     }
 
@@ -106,7 +94,7 @@ class SocketConnection(private val context: Context,
             clientWebSocket = null
         }
 
-        releaseNetworkStateListener()
+        //releaseNetworkStateListener()
         stopCheckConnection()
     }
 
@@ -177,7 +165,7 @@ class SocketConnection(private val context: Context,
         Log.info("Websocket error: $error")
     }
 
-    private fun initNetworkListener(){
+ /*   private fun initNetworkListener(){
         context.registerReceiver(mNetworkReceiver,  IntentFilter(ACTION_NETWORK_STATE_CHANGED))
     }
 
@@ -200,7 +188,7 @@ class SocketConnection(private val context: Context,
                 closeConnection()
             }
         }
-    }
+    }*/
 
     fun isConnected(): Boolean {
         return clientWebSocket?.getConnection() != null &&
