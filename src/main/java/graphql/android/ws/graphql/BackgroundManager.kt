@@ -4,7 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import android.os.Handler
-import graphql.android.ws.graphql.utils.SingletonHolder
+import graphql.android.ws.graphql.utils.SingleSingletonHolder
 import java.util.*
 import java.util.logging.Logger
 
@@ -14,7 +14,7 @@ class BackgroundManager private constructor(application: Application):  Applicat
         application.registerActivityLifecycleCallbacks(this)
     }
 
-    companion object  : SingletonHolder<BackgroundManager, Application>(::BackgroundManager) {
+    companion object  : SingleSingletonHolder<BackgroundManager, Application>(::BackgroundManager) {
         val Log: Logger = Logger.getLogger(BackgroundManager::class.java.name)
     }
 

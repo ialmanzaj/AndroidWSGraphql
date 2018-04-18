@@ -6,13 +6,13 @@ import com.google.gson.JsonParser
 import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
+import graphql.android.ws.graphql.utils.SingletonHolder
 import org.json.JSONObject
 import java.util.logging.Logger
 
-class SocketConnection (private val view: SocketConnectionListener,
-                                           URL: String) : ClientWebSocket.SocketListenerCallback {
+class SocketConnection private constructor(private val view: SocketConnectionListener, URL: String) : ClientWebSocket.SocketListenerCallback {
 
-    companion object {
+    companion object  : SingletonHolder<SocketConnection, SocketConnectionListener, String>(::SocketConnection){
         private val Log: Logger = Logger.getLogger(SocketConnection::class.java.name)
         private const val HEART_BEAT = 60000L
     }
@@ -27,7 +27,6 @@ class SocketConnection (private val view: SocketConnectionListener,
 
         try {
             clientWebSocket = ClientWebSocket(this, URL)
-            openConnection()
 
         } catch (e: Exception) {
             Log.info( "Socket exception $e")
@@ -81,7 +80,7 @@ class SocketConnection (private val view: SocketConnectionListener,
     fun openConnection() {
         if (clientWebSocket != null) clientWebSocket!!.close()
 
-        Log.info( "Socket is opening a connection ")
+        Log.info( "Socket is opening a connection $clientWebSocket")
         clientWebSocket?.connect()
         //initNetworkListener()
         startCheckConnection()
@@ -99,7 +98,7 @@ class SocketConnection (private val view: SocketConnectionListener,
     }
 
     fun closeGraphqlConnection(){
-        this.sendMessage(OperationMessage(null, GQL_CONNECTION_TERMINATE, null ))
+        this.sendMessage(OperationMessage(id = null, type = GQL_CONNECTION_TERMINATE, payload = null))
     }
 
     fun sendMessage(message: OperationMessage) {
@@ -107,7 +106,6 @@ class SocketConnection (private val view: SocketConnectionListener,
         if (isConnected()){
            sendRaw(response)
         }else{
-            openConnection()
             queue.add(response)
         }
     }
@@ -164,31 +162,6 @@ class SocketConnection (private val view: SocketConnectionListener,
     override fun onError(error: Exception) {
         Log.info("Websocket error: $error")
     }
-
- /*   private fun initNetworkListener(){
-        context.registerReceiver(mNetworkReceiver,  IntentFilter(ACTION_NETWORK_STATE_CHANGED))
-    }
-
-    private fun releaseNetworkStateListener() {
-        try {
-            context.unregisterReceiver(mNetworkReceiver)
-        } catch (e: IllegalArgumentException) {
-            Log.warning("IllegalArgumentException $e")
-        }
-    }
-
-    private val mNetworkReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val networkIsOn = intent.getBooleanExtra(ACTION_NETWORK_STATE_CHANGED, false)
-            if (networkIsOn) {
-                Log.info( "networkIsOn -> openConnection")
-                openConnection()
-            } else {
-                Log.info( "networkIsOff -> closeConnection")
-                closeConnection()
-            }
-        }
-    }*/
 
     fun isConnected(): Boolean {
         return clientWebSocket?.getConnection() != null &&

@@ -9,7 +9,7 @@ enum class SocketOperation {
 
 data class OperationMessage(
         var id: String?,
-        var type: String?,
+        var type: String,
         var payload: Payload?
 )
 
@@ -23,6 +23,6 @@ data class PayloadServer(var data: Any)
 
 data class OperationMessageServer(
         var id: String?,
-        var type: String?,
+        var type: String,
         var payload: PayloadServer?
 )
