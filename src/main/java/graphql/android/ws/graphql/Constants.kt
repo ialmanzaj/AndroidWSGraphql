@@ -13,3 +13,8 @@ const val GQL_CONNECTION_TERMINATE = "connection_terminate"
 const val GQL_DATA = "data"
 const val GQL_COMPLETE = "complete"
 const val GQL_ERROR = "error"
+
+
+const val TIMEOUT: Int = 5000
+const val MAX_RECONNECT = 5
+const val BACKGROUND_DELAY : Long = 500

@@ -1,36 +1,36 @@
 package graphql.android.ws.graphql
 
-import android.os.Handler
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
 import graphql.android.ws.graphql.utils.SingletonHolder
+import graphql.android.ws.graphql.websocket.ClientWebsocket
 import org.json.JSONObject
 import java.util.logging.Logger
 
-class SocketConnection private constructor(private val view: SocketConnectionListener, URL: String) : ClientWebSocket.SocketListenerCallback {
+class ClientGraphql private constructor(private val view: GraphqlConnectionListener) : ClientWebsocket.ClientWebsocketListener {
 
-    companion object  : SingletonHolder<SocketConnection, SocketConnectionListener, String>(::SocketConnection){
-        private val Log: Logger = Logger.getLogger(SocketConnection::class.java.name)
-        private const val HEART_BEAT = 60000L
+    private var mClientWebsocket: ClientWebsocket? = null
+
+    companion object : SingletonHolder<ClientGraphql, GraphqlConnectionListener>(::ClientGraphql){
+        private val Log: Logger = Logger.getLogger(ClientGraphql::class.java.name)
     }
-
-    private var clientWebSocket: ClientWebSocket? = null
-    private var socketConnectionHandler: Handler? = null
 
     private var queue : MutableList<String> = mutableListOf()
 
-    init {
-        socketConnectionHandler = Handler()
+    fun create(url: String){
+        mClientWebsocket = ClientWebsocket(this)
+        mClientWebsocket?.createConnection(url)
+    }
 
-        try {
-            clientWebSocket = ClientWebSocket(this, URL)
+    fun connect() {
+        mClientWebsocket?.openConnection()
+    }
 
-        } catch (e: Exception) {
-            Log.info( "Socket exception $e")
-        }
+    fun disconnect() {
+        mClientWebsocket?.closeConnection()
     }
 
     fun subscribe(subscription: Subscription) {
@@ -57,70 +57,28 @@ class SocketConnection private constructor(private val view: SocketConnectionLis
         }
     }
 
-    private val checkConnectionRunnable = {
-        val open = clientWebSocket?.getConnection()?.isOpen ?: false
-        if (!open) {
-            openConnection()
-        }
-        startCheckConnection()
-    }
-
-    private fun startCheckConnection() {
-        socketConnectionHandler?.postDelayed(checkConnectionRunnable, HEART_BEAT)
-    }
-
-    private fun stopCheckConnection() {
-        socketConnectionHandler?.removeCallbacks(checkConnectionRunnable)
-    }
-
     private fun openGraphqlConnection(){
-        this.sendMessage(OperationMessage(null, GQL_CONNECTION_INIT, null))
+        this.sendMessage(OperationMessage(id = null, type = GQL_CONNECTION_INIT, payload = null))
     }
 
-    fun openConnection() {
-        if (clientWebSocket != null) clientWebSocket!!.close()
-
-        Log.info( "Socket is opening a connection $clientWebSocket")
-        clientWebSocket?.connect()
-        //initNetworkListener()
-        startCheckConnection()
-    }
-
-    fun closeConnection() {
-        if(clientWebSocket != null) {
-            closeGraphqlConnection()
-            clientWebSocket?.close()
-            clientWebSocket = null
-        }
-
-        //releaseNetworkStateListener()
-        stopCheckConnection()
-    }
-
-    fun closeGraphqlConnection(){
+    private fun closeGraphqlConnection(){
         this.sendMessage(OperationMessage(id = null, type = GQL_CONNECTION_TERMINATE, payload = null))
     }
 
     fun sendMessage(message: OperationMessage) {
         val response = Gson().toJson(message)
         if (isConnected()){
-           sendRaw(response)
+            mClientWebsocket?.send(response)
         }else{
             queue.add(response)
         }
     }
 
-    private fun sendRaw(response: String){
-        Log.info("sending raw message $response")
-        clientWebSocket?.sendMessage(response)
+    private fun isConnected(): Boolean{
+        return mClientWebsocket?.isConnected() ?: false
     }
 
-    override fun onConnected() {
-        Log.info("Websocket is connected")
-        openGraphqlConnection()
-    }
-
-    override fun onSocketMessage(message: String) {
+    override fun messageReceived(message: String?) {
         val response = JSONObject(message)
         when (response.get("type")) {
             GQL_CONNECTION_ACK -> {
@@ -155,20 +113,21 @@ class SocketConnection private constructor(private val view: SocketConnectionLis
         }
     }
 
+    private fun sendRaw(response: String){
+        Log.info("sending raw message $response")
+        mClientWebsocket?.send(response)
+    }
+
+    override fun onConnected() {
+        openGraphqlConnection()
+    }
+
     override fun onDisconnected() {
         Log.info("Websocket is disconnected")
+        closeGraphqlConnection()
     }
 
-    override fun onError(error: Exception) {
-        Log.info("Websocket error: $error")
-    }
-
-    fun isConnected(): Boolean {
-        return clientWebSocket?.getConnection() != null &&
-                clientWebSocket?.getConnection()!!.isOpen
-    }
-
-    interface SocketConnectionListener {
+    interface GraphqlConnectionListener {
         fun onConnected()
         fun onReceivedMessage(response: Response)
         fun onDisconnected()

@@ -23,17 +23,19 @@ class ExampleUnitTest : AndroidTestCase(){
         val context = context
         Assert.assertNotNull(context)
 
-        val socketConnection  = SocketConnection(object : SocketConnection.SocketConnectionListener {
+        val socketConnection  = ClientGraphql(object : ClientGraphql.SocketConnectionListener {
             override fun onConnected() {
 
             }
-            override fun onReceivedMessage(response: SocketConnection.Response) {
+
+            override fun onReceivedMessage(response: ClientGraphql.Response) {
                 Log.d("ExampleUnitTest", "reponse $response")
             }
+
             override fun onDisconnected() {
 
             }
-        }, "192.168.0.101:3030/v1/graphql")
+        })
 
 
         socketConnection.subscribe(Subscription("", ""))
