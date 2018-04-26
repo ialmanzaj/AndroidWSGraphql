@@ -6,25 +6,23 @@ import java.io.IOException
 import java.nio.charset.Charset
 import java.security.NoSuchAlgorithmException
 
-class ClientWebSocket(private var listener: SocketListenerCallback, private var  host: String) {
+class ClientWebSocket(private var listener: SocketListenerCallback) {
 
     companion object {
         val TAG: String = ClientWebSocket::class.java.canonicalName
-        const val TIMEOUT: Int = 5000
-        const val MAX_RECONNECT = 5
     }
 
     private var ws: WebSocket? = null
 
-
-    fun connect() {
+    fun connect(host: String) {
+        Log.d(TAG,"connect")
         Thread {
             if (ws != null) {
                 reconnect()
             } else {
                 try {
 
-                    val factory = WebSocketFactory().setConnectionTimeout(TIMEOUT)
+                    val factory = WebSocketFactory().setConnectionTimeout(WEBSOCKET_TIMEOUT)
                     //val context = NaiveSSLContext.getInstance("TLS")
                     //factory.sslContext = context
                     ws = factory.createSocket(host)
@@ -34,6 +32,7 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
 
                     Log.d(TAG,"creating web-socket $ws")
 
+
                 } catch (e:OpeningHandshakeException) {
                     Log.e(TAG,"OpeningHandshakeException $e")
                     // A violation against the WebSocket protocol was detected
@@ -41,9 +40,9 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
                     // Status line.
                     val sl = e.statusLine
                     println("=== Status Line ===")
-                    System.out.format("HTTP Version  = %s\n", sl.httpVersion)
-                    System.out.format("Status Code   = %d\n", sl.statusCode)
-                    System.out.format("Reason Phrase = %s\n", sl.reasonPhrase)
+                    Log.d(TAG, "HTTP Version  = $sl.httpVersion")
+                    Log.d(TAG,"Status Code   = $sl.statusCode")
+                    Log.d(TAG,"Reason Phrase = $sl.reasonPhrase")
 
                     // HTTP headers.
                     val headers = e.headers
@@ -78,10 +77,10 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
         }.start()
     }
 
-    private fun reconnect() {
+    fun reconnect() {
         try {
-            ws = ws?.recreate()?.connect()
             Log.i(TAG, "reconnecting")
+            ws = ws?.recreate()?.connect()
         } catch (e: WebSocketException) {
             Log.e(TAG,"WebSocketException $e")
         } catch (e: IOException) {
@@ -99,8 +98,8 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
     }
 
     fun close() {
-        ws?.disconnect()
         Log.d(TAG,"disconnecting socket")
+        ws?.disconnect()
     }
 
     inner class SocketAdapter : WebSocketAdapter() {
@@ -202,14 +201,10 @@ class ClientWebSocket(private var listener: SocketListenerCallback, private var 
                     "serverCloseFrame ${serverCloseFrame.payload?.let { String(it, Charset.forName("UTF-8"))}} " +
                     "clientCloseFrame: ${clientCloseFrame.payload?.let { String(it, Charset.forName("UTF-8"))}} " +
                     "closedByServer: $closedByServer")
-            if (closedByServer) {
-                reconnect()
-            }
             listener.onDisconnected()
         }
         override fun onUnexpectedError(websocket: WebSocket, cause: WebSocketException) {
             Log.e(TAG, "Error -->" + cause.message)
-            reconnect()
             listener.onError(cause)
         }
     }

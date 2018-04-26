@@ -2,7 +2,6 @@ package graphql.android.ws.graphql.model
 
 import com.google.gson.JsonObject
 
-
 enum class SocketOperation {
     CONNECT, DISCONNECT
 }

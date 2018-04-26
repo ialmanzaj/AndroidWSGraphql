@@ -1,5 +1,9 @@
 package graphql.android.ws.graphql
 
+
+const val HEART_BEAT = 60000L
+const val WEBSOCKET_TIMEOUT: Int = 5000
+
 const val GRAPHQL_WS = "graphql-ws"
 
 const val GQL_STOP = "stop"
