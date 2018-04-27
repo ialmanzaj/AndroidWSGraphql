@@ -1,31 +1,36 @@
 package graphql.android.ws.graphql
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Handler
+import android.support.v4.content.LocalBroadcastManager
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import graphql.android.ws.graphql.model.OperationMessage
 import graphql.android.ws.graphql.model.Payload
 import graphql.android.ws.graphql.model.Subscription
-import graphql.android.ws.graphql.utils.SingletonHolder
 import org.json.JSONObject
 import java.util.logging.Logger
 
-class GraphqlSocketClient private constructor(private val view: GraphqlWebSocketListener, private val URL: String) : ClientWebSocket.SocketListenerCallback {
+class GraphqlSocketClient(private val context: Context, private val view: GraphqlWebSocketListener, private val URL: String) : ClientWebSocket.SocketListenerCallback {
 
-    companion object  : SingletonHolder<GraphqlSocketClient, GraphqlWebSocketListener, String>(::GraphqlSocketClient){
+    companion object {
         private val Log: Logger = Logger.getLogger(GraphqlSocketClient::class.java.name)
     }
 
     private var clientWebSocket: ClientWebSocket? = null
     private var socketConnectionHandler: Handler? = null
-
     private var queue : MutableList<String> = mutableListOf()
+    private var networkIsOn = false
 
     init {
         socketConnectionHandler = Handler()
 
         try {
             clientWebSocket = ClientWebSocket(this)
+            clientWebSocket!!.setHost(URL)
 
         } catch (e: Exception) {
             Log.info( "Socket exception $e")
@@ -52,11 +57,11 @@ class GraphqlSocketClient private constructor(private val view: GraphqlWebSocket
     }
 
     private val checkConnectionRunnable = {
-       /* val open = clientWebSocket?.getConnection()?.isOpen ?: false
+        val open = clientWebSocket?.getConnection()?.isOpen  ?: false && networkIsOn
         if (!open) {
             openConnection()
         }
-        startCheckConnection()*/
+        startCheckConnection()
     }
 
     private fun startCheckConnection() {
@@ -77,15 +82,17 @@ class GraphqlSocketClient private constructor(private val view: GraphqlWebSocket
             return
         }
 
-        if (!isConnected()){
-            Log.info( "Socket is opening a connection $clientWebSocket")
-            clientWebSocket?.connect(URL)
-        }else{
-            clientWebSocket?.reconnect()
-        }
 
-        //initNetworkListener()
+        Log.info( "Socket is opening a connection $clientWebSocket")
+        clientWebSocket?.connect()
+
+        initNetworkListener()
         startCheckConnection()
+    }
+
+    private fun initNetworkListener() {
+        LocalBroadcastManager.getInstance(context).registerReceiver(mNetworkReceiver,
+                IntentFilter(NetworkStateReceiver.ACTION_NETWORK_STATE_CHANGED))
     }
 
     fun closeConnection() {
@@ -95,8 +102,12 @@ class GraphqlSocketClient private constructor(private val view: GraphqlWebSocket
             clientWebSocket = null
         }
 
-        //releaseNetworkStateListener()
+        releaseNetworkStateListener()
         stopCheckConnection()
+    }
+
+    private fun releaseNetworkStateListener() {
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(mNetworkReceiver)
     }
 
     fun closeGraphqlConnection(){
@@ -153,6 +164,19 @@ class GraphqlSocketClient private constructor(private val view: GraphqlWebSocket
             GQL_CONNECTION_TERMINATE -> {
                 Log.info("Graphql is disconnected")
                 view.onDisconnected()
+            }
+        }
+    }
+
+    private val mNetworkReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            networkIsOn = intent.getBooleanExtra(NetworkStateReceiver.ACTION_NETWORK_STATE_CHANGED, false)
+            if (networkIsOn) {
+                Log.info( "networkIsOn -> openConnection")
+                openConnection()
+            } else {
+                Log.info( "networkIsOff -> closeConnection")
+                closeConnection()
             }
         }
     }

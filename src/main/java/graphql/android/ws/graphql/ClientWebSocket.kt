@@ -13,8 +13,13 @@ class ClientWebSocket(private var listener: SocketListenerCallback) {
     }
 
     private var ws: WebSocket? = null
+    private var host: String? = null
 
-    fun connect(host: String) {
+    fun setHost(host: String){
+        this.host = host
+    }
+
+    fun connect() {
         Log.d(TAG,"connect")
         Thread {
             if (ws != null) {
@@ -77,7 +82,7 @@ class ClientWebSocket(private var listener: SocketListenerCallback) {
         }.start()
     }
 
-    fun reconnect() {
+    private fun reconnect() {
         try {
             Log.i(TAG, "reconnecting")
             ws = ws?.recreate()?.connect()
